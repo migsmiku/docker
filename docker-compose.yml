@@ -1,0 +1,58 @@
+services:
+  qbittorrent-nox:
+    # for debugging
+    #cap_add:
+      #- SYS_PTRACE
+    container_name: qbittorrent-nox
+    environment:
+      #- PAGID=10000
+      #- PGID=1000
+      #- PUID=1000
+      - QBT_EULA=${QBT_EULA}
+      - QBT_VERSION=${QBT_VERSION}
+      - QBT_WEBUI_PORT=${QBT_WEBUI_PORT}
+      #- TZ=UTC
+      #- UMASK=022
+    image: qbittorrentofficial/qbittorrent-nox:${QBT_VERSION}
+    restart: always
+    ports:
+      # for bittorrent traffic
+      - 6881:6881/tcp
+      - 6881:6881/udp
+      # for WebUI
+      - ${QBT_WEBUI_PORT}:${QBT_WEBUI_PORT}/tcp
+    read_only: true
+    stop_grace_period: 30m
+    tmpfs:
+      - /tmp
+    tty: true
+    volumes:
+      - ${QBT_CONFIG_PATH}:/config
+      - ${QBT_DOWNLOADS_PATH}:/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://192.168.86.41:8080"]
+      interval: 1s
+      timeout: 2s
+      retries: 5
+      start_period: 30s
+      
+  AutoBangumi:
+    image: "ghcr.io/estrellaxd/auto_bangumi:latest"
+    container_name: AutoBangumi
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+    ports:
+      - "7892:7892"
+    network_mode: bridge
+    restart: always
+    dns:
+      - 223.5.5.5
+    environment:
+      - TZ=Asia/Shanghai
+      - PGID=$(id -g)
+      - PUID=$(id -u)
+      - UMASK=022
+    depends_on:
+      qbittorrent-nox:
+        condition: service_healthy
